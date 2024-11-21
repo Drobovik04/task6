@@ -18,9 +18,15 @@ namespace task6.Controllers
             return View(_presentationHub.Presentations);
         }
 
-        public IActionResult Privacy()
+        public IActionResult Join(int idPresentation)
         {
-            return View();
+            Presentation selectedPresentation = _presentationHub.Presentations.Find(x => x.Id == idPresentation)!;
+            return View("Presentation", selectedPresentation);
+        }
+
+        public IActionResult Create()
+        {
+            return View("Presentation");
         }
 
     }

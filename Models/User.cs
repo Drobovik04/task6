@@ -9,7 +9,7 @@
 
     public class User
     {
-        public string ConnectionId { get; set; }
+        public int ConnectionId { get; set; }
         public string Nickname { get; set; }
         public UserType Role { get; set; }
     }

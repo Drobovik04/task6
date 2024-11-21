@@ -1,69 +1,270 @@
-﻿@{
+﻿@model Presentation
+@{
     ViewData["Title"] = "Presentation";
+    Layout = null;
 }
 
-<div class="presentation-container">
-    <!-- Левая панель: список слайдов -->
-    <div class="left-panel">
-        <h3>Слайды</h3>
-        <ul id="slidesList">
-            @foreach (var slide in Model.Slides)
-            {
-                <li class="slide-item" onclick="selectSlide('@slide.Id')">
-                    Слайд №@Model.Slides.IndexOf(slide) + 1
-                </li>
-            }
-        </ul>
-        @if (Model.IsCreator)
-        {
-            <button id="addSlideButton" onclick="addSlide()">Добавить слайд</button>
-        }
+<div class="container-fluid">
+    <div class="row">
+        <!-- Панель инструментов -->
+        <div class="col-12 bg-light py-2 mb-3">
+            <button id="addText" class="btn btn-secondary">Create text</button>
+            <button id="addCircle" class="btn btn-secondary">Create circle</button>
+        </div>
     </div>
-
-    <!-- Центральная область: текущий слайд -->
-    <div class="slide-area">
-        @if (Model.CurrentSlide != null)
-        {
-            <div class="slide-content" id="currentSlide">
-                @foreach (var textElement in Model.CurrentSlide.TextElements)
+    <div class="row">
+        <!-- Список слайдов -->
+        <div class="col-2 border-end overflow-auto" style="height: 80vh;">
+            <ul class="list-group" id="slidesList">
+                @if (Model.Slides != null) foreach (var slide in Model.Slides)
                 {
-                    <div class="text-block" style="left:@textElement.Position.Xpx; top:@textElement.Position.Ypx;">
-                        <textarea class="editable" data-id="@textElement.Id">@textElement.Content</textarea>
-                    </div>
+                    <li class="list-group-item slide-item" data-slide-id="@slide.Id">@slide.Id</li>
                 }
+            </ul>
+        </div>
+
+        <!-- Центральная панель (текущий слайд) -->
+        <div class="col-8 text-center position-relative" style="height: 80vh; border-right: 1px solid #ddd;">
+            <div id="currentSlide" class="position-relative" style="height: 100%; border: 1px solid #ccc;">
+                <!-- Здесь появляются элементы -->
             </div>
-        }
-        else
-        {
-            <p>Выберите слайд для редактирования</p>
-        }
-    </div>
+        </div>
 
-    <!-- Правая панель: список пользователей -->
-    <div class="right-panel">
-        <h3>Участники</h3>
-        <ul id="usersList">
-            @foreach (var user in Model.Users)
-            {
-                <li>
-                    @user.Nickname - @user.Role
-                    @if (Model.IsCreator && user.Role != "Creator")
-                    {
-                        <button onclick="toggleRole('@user.Nickname')">
-                            @(user.Role == "Editor" ? "Сделать зрителем" : "Сделать редактором")
-                        </button>
-                    }
-                </li>
+        <!-- Список пользователей -->
+        <div class="col-2">
+            <ul class="list-group">
+                @if (Model.Users != null) foreach (var user in Model.Users)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        @user.Nickname
+                        <div>
+                            <form method="post" asp-page-handler="UserAction" class="d-inline">
+                                <input type="hidden" name="userId" value="@user.ConnectionId" />
+                                <input type="hidden" name="action" value="action1" />
+                                <button type="submit" class="btn btn-sm btn-primary">Действие 1</button>
+                            </form>
+                            <form method="post" asp-page-handler="UserAction" class="d-inline">
+                                <input type="hidden" name="userId" value="@user.ConnectionId" />
+                                <input type="hidden" name="action" value="action2" />
+                                <button type="submit" class="btn btn-sm btn-danger">Действие 2</button>
+                            </form>
+                        </div>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    let currentSlide = null;
+    let slideElements = {}; // Хранит элементы для каждого слайда
+    let selectedElement = null; // Текущий выделенный элемент
+    let addingElement = null; // Тип добавляемого элемента
+    let dragOffset = { x: 0, y: 0 }; // Для корректного перемещения
+
+    const editorContainer = document.createElement('div'); // Для ввода текста
+
+    document.addEventListener("DOMContentLoaded", function () {
+        // Обработка кликов по слайдам
+        document.getElementById('slidesList').addEventListener('click', function (e) {
+            const slideItem = e.target.closest('.slide-item');
+            if (slideItem) {
+                const slideId = slideItem.dataset.slideId;
+                loadSlide(slideId);
             }
-        </ul>
-    </div>
-</div>
+        });
 
-<!-- Верхняя панель -->
-<div class="top-panel">
-    <h2>@Model.Title</h2>
-    <button onclick="enterPresentationMode()">Режим презентации</button>
-    <a href="/">Выйти</a>
-</div>
+        // Добавление текста
+        document.getElementById('addText').addEventListener('click', () => startAddingElement('text'));
+        // Добавление круга
+        document.getElementById('addCircle').addEventListener('click', () => startAddingElement('circle'));
 
-<script src="js/presentation.js"></script>
+        // Обработчик для перемещения
+        const currentSlideContainer = document.getElementById('currentSlide');
+        currentSlideContainer.addEventListener('dragover', (e) => e.preventDefault());
+        currentSlideContainer.addEventListener('click', (e) => {
+            if (addingElement) {
+                const { x, y } = getClickPosition(e, currentSlideContainer);
+                addElementToSlide(addingElement, x, y);
+                addingElement = null;
+            } else {
+                deselectElement();
+            }
+        });
+
+        // Настраиваем редактор
+        setupEditor();
+    });
+
+    function setupEditor() {
+        editorContainer.style.position = 'absolute';
+        editorContainer.style.display = 'none';
+        editorContainer.style.backgroundColor = 'white';
+        editorContainer.style.border = '1px solid #ccc';
+        editorContainer.style.padding = '10px';
+        editorContainer.style.zIndex = '1000';
+        editorContainer.innerHTML = `
+                <textarea id="editorInput" rows="3" style="width: 200px;"></textarea>
+                <button id="saveEditor" class="btn btn-primary btn-sm">Сохранить</button>
+                <button id="deleteEditor" class="btn btn-danger btn-sm">Удалить</button>
+            `;
+        document.body.appendChild(editorContainer);
+
+        document.getElementById('saveEditor').addEventListener('click', saveEditor);
+        document.getElementById('deleteEditor').addEventListener('click', deleteEditor);
+    }
+
+    function startAddingElement(type) {
+        addingElement = type;
+        alert("Кликните на слайд, чтобы добавить элемент");
+    }
+
+    function getClickPosition(e, container) {
+        const rect = container.getBoundingClientRect();
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    function addElementToSlide(type, x, y) {
+        const element = { type, x, y, content: type === 'text' ? 'Текст' : '' };
+        if (!slideElements[currentSlide]) slideElements[currentSlide] = [];
+        slideElements[currentSlide].push(element);
+        renderSlideElements();
+    }
+
+    function loadSlide(slideId) {
+        currentSlide = slideId;
+
+        // Обновляем выделение текущего слайда в списке
+        document.querySelectorAll('.slide-item').forEach(item => item.classList.remove('active'));
+        const activeSlide = document.querySelector(`.slide-item[data-slide-id="${slideId}"]`);
+        if (activeSlide) {
+            activeSlide.classList.add('active');
+        }
+
+        renderSlideElements();
+    }
+
+    function renderSlideElements() {
+        const container = document.getElementById('currentSlide');
+        container.innerHTML = '';
+        if (!slideElements[currentSlide]) return;
+
+        slideElements[currentSlide].forEach((element, index) => {
+            const el = document.createElement('div');
+            el.classList.add('slide-element');
+            el.dataset.index = index;
+            el.style.position = 'absolute';
+            el.style.left = `${element.x}px`;
+            el.style.top = `${element.y}px`;
+            el.style.border = selectedElement === index ? '2px dashed blue' : 'none';
+
+            if (element.type === 'text') {
+                el.innerHTML = marked.parse(element.content); // Преобразуем Markdown
+                el.style.color = 'black';
+                el.style.cursor = 'pointer';
+            } else if (element.type === 'circle') {
+                el.style.width = '50px';
+                el.style.height = '50px';
+                el.style.borderRadius = '50%';
+                el.style.backgroundColor = 'blue';
+                el.style.cursor = 'pointer';
+            }
+
+            // События для перемещения
+            el.draggable = true;
+            el.addEventListener('dragstart', (e) => dragStart(e, index));
+            el.addEventListener('dragend', (e) => dragEnd(e));
+
+            // События для выделения и редактирования
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectElement(index, el);
+            });
+
+            container.appendChild(el);
+        });
+    }
+
+    function dragStart(e, index) {
+        selectedElement = index;
+        dragOffset.x = e.offsetX;
+        dragOffset.y = e.offsetY;
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function dragEnd(e) {
+        const rect = document.getElementById('currentSlide').getBoundingClientRect();
+        const newX = e.clientX - rect.left - dragOffset.x;
+        const newY = e.clientY - rect.top - dragOffset.y;
+
+        if (selectedElement !== null) {
+            slideElements[currentSlide][selectedElement].x = newX;
+            slideElements[currentSlide][selectedElement].y = newY;
+        }
+
+        renderSlideElements();
+    }
+
+    function selectElement(index, element) {
+        selectedElement = index;
+
+        const currentElement = slideElements[currentSlide][index];
+        if (currentElement.type === 'text') {
+            showEditor(currentElement, element);
+        }
+
+        renderSlideElements();
+    }
+
+    function deselectElement() {
+        selectedElement = null;
+        editorContainer.style.display = 'none';
+        renderSlideElements();
+    }
+
+    function showEditor(element, domElement) {
+        editorContainer.style.left = `${domElement.getBoundingClientRect().left}px`;
+        editorContainer.style.top = `${domElement.getBoundingClientRect().top + domElement.offsetHeight}px`;
+        editorContainer.style.display = 'block';
+        document.getElementById('editorInput').value = element.content;
+    }
+
+    function saveEditor() {
+        if (selectedElement !== null) {
+            const content = document.getElementById('editorInput').value;
+            slideElements[currentSlide][selectedElement].content = content; // Сохраняем Markdown
+            editorContainer.style.display = 'none';
+            renderSlideElements();
+        }
+    }
+
+    function deleteEditor() {
+        if (selectedElement !== null) {
+            slideElements[currentSlide].splice(selectedElement, 1);
+            selectedElement = null;
+            editorContainer.style.display = 'none';
+            renderSlideElements();
+        }
+    }
+</script>
+
+
+
+<style>
+    .slide-element {
+        cursor: pointer;
+    }
+
+    .slide-element.selected {
+        border: 2px thin blue;
+    }
+
+    #editorContainer {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+</style>

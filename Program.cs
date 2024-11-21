@@ -11,6 +11,7 @@ namespace task6
             // Add services to the container.
             builder.Services.AddControllersWithViews();
             builder.Services.AddSignalR();
+            builder.Services.AddSingleton<PresentationHub>();
 
             var app = builder.Build();
 
