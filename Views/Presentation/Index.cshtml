@@ -1,0 +1,40 @@
+﻿@model IEnumerable<Presentation>
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Collaborative Presentation - Main</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+    <div class="main-container">
+        <h1>Collaborative Presentation</h1>
+
+        <div class="presentation-list">
+            <h3>Available presentations:</h3>
+            <ul id="presentations">
+                @foreach (var presentation in Model)
+                {
+                    <li>
+                        @presentation.Name
+                        <button onclick="joinPresentation('@presentation.Id')">Connect</button>
+                    </li>
+                }
+            </ul>
+        </div>
+
+        <div class="create-presentation">
+            <h3>Create a new presentation:</h3>
+            <form method="post" action="/Presentation/CreatePresentation">
+                <label for="presentationName">Name:</label>
+                <input type="text" id="presentationName" name="presentationName" placeholder="Enter name" required />
+                <button type="submit">Create</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

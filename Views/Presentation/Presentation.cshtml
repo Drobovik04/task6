@@ -1,0 +1,69 @@
+﻿@{
+    ViewData["Title"] = "Presentation";
+}
+
+<div class="presentation-container">
+    <!-- Левая панель: список слайдов -->
+    <div class="left-panel">
+        <h3>Слайды</h3>
+        <ul id="slidesList">
+            @foreach (var slide in Model.Slides)
+            {
+                <li class="slide-item" onclick="selectSlide('@slide.Id')">
+                    Слайд №@Model.Slides.IndexOf(slide) + 1
+                </li>
+            }
+        </ul>
+        @if (Model.IsCreator)
+        {
+            <button id="addSlideButton" onclick="addSlide()">Добавить слайд</button>
+        }
+    </div>
+
+    <!-- Центральная область: текущий слайд -->
+    <div class="slide-area">
+        @if (Model.CurrentSlide != null)
+        {
+            <div class="slide-content" id="currentSlide">
+                @foreach (var textElement in Model.CurrentSlide.TextElements)
+                {
+                    <div class="text-block" style="left:@textElement.Position.Xpx; top:@textElement.Position.Ypx;">
+                        <textarea class="editable" data-id="@textElement.Id">@textElement.Content</textarea>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p>Выберите слайд для редактирования</p>
+        }
+    </div>
+
+    <!-- Правая панель: список пользователей -->
+    <div class="right-panel">
+        <h3>Участники</h3>
+        <ul id="usersList">
+            @foreach (var user in Model.Users)
+            {
+                <li>
+                    @user.Nickname - @user.Role
+                    @if (Model.IsCreator && user.Role != "Creator")
+                    {
+                        <button onclick="toggleRole('@user.Nickname')">
+                            @(user.Role == "Editor" ? "Сделать зрителем" : "Сделать редактором")
+                        </button>
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+</div>
+
+<!-- Верхняя панель -->
+<div class="top-panel">
+    <h2>@Model.Title</h2>
+    <button onclick="enterPresentationMode()">Режим презентации</button>
+    <a href="/">Выйти</a>
+</div>
+
+<script src="js/presentation.js"></script>
