@@ -110,8 +110,10 @@
         editorContainer.style.zIndex = '1000';
         editorContainer.innerHTML = `
                 <textarea id="editorInput" rows="3" style="width: 200px;"></textarea>
-                <button id="saveEditor" class="btn btn-primary btn-sm">Сохранить</button>
-                <button id="deleteEditor" class="btn btn-danger btn-sm">Удалить</button>
+                <div class="d-flex mt-1">
+                    <button id="saveEditor" class="btn btn-primary btn-sm">Сохранить</button>
+                    <button id="deleteEditor" class="btn btn-danger btn-sm">Удалить</button>
+                <\div
             `;
         document.body.appendChild(editorContainer);
 
@@ -121,7 +123,6 @@
 
     function startAddingElement(type) {
         addingElement = type;
-        alert("Кликните на слайд, чтобы добавить элемент");
     }
 
     function getClickPosition(e, container) {
@@ -201,6 +202,10 @@
         const rect = document.getElementById('currentSlide').getBoundingClientRect();
         const newX = e.clientX - rect.left - dragOffset.x;
         const newY = e.clientY - rect.top - dragOffset.y;
+        const rectElement = e.currentTarget.getBoundingClientRect();
+
+        if (newX < 0 || newY < 0 || newX + rectElement.width > rect.right - rect.left || newY + rectElement.height > rect.bottom - rect.top)
+            return;
 
         if (selectedElement !== null) {
             slideElements[currentSlide][selectedElement].x = newX;
