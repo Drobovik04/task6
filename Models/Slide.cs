@@ -2,7 +2,7 @@
 {
     public class Slide
     {
-        public int Id { get; set; }
-        public List<Element> Elements { get; set; }
+        public string Id { get; set; }
+        public List<Element> Elements { get; set; } = new List<Element>();
     }
 }

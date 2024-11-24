@@ -1,8 +1,13 @@
-﻿namespace task6.Models
+﻿using System.Text.Json.Serialization;
+
+namespace task6.Models
 {
+    [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
+    [JsonDerivedType(typeof(Text), "text")]
+    [JsonDerivedType(typeof(Circle), "circle")]
     public class Element
     {
-        public int Id { get; set; }
-        public Position Position { get; set; }
+        public string Id { get; set; }
+        public Position Position { get; set; } = new Position();
     }
 }
