@@ -12,6 +12,12 @@
 <body>
     <div class="container mt-5">
         <h1 class="mb-4">List of presentations</h1>
+        @if (TempData["ErrorUsername"] != null)
+        {
+            <label class="alert alert-danger">
+                @TempData["ErrorUsername"]
+            </label>
+        }
         <div class="mb-3">
             <label for="nickName" class="form-label">Username</label>
             <input type="text" class="form-control" id="nickName" name="nickName" />
@@ -33,6 +39,12 @@
         <div class="card mt-4">
             <div class="card-body">
                 <h5 class="card-title">Create a presentation</h5>
+                @if (TempData["ErrorCreate"] != null)
+                {
+                    <label class="alert alert-danger">
+                        @TempData["ErrorCreate"]
+                    </label>
+                }
                 <form id="createForm" method="post" asp-action="Create">
                     <div class="mb-3">
                         <label for="conferenceName" class="form-label">Presentation name</label>
@@ -47,6 +59,7 @@
             </div>
         </div>
     </div>
+    <div id="notification-container" style="position: fixed; top: 1rem; right: 1rem; z-index: 1050;"></div>
 </body>
 </html>
 
@@ -86,6 +99,14 @@
 
         presentationsList.appendChild(newForm);
     });
+    connection.on("PresentationDeleted", (presentation) => {
+
+        const forms = document.querySelectorAll(`form input[value="${presentation.id}"]`);
+        forms.forEach(input => {
+            const form = input.closest('form');
+            form.remove();
+        });
+    });
 
     // Запускаем соединение
     async function startSignalRConnection() {
@@ -100,11 +121,10 @@
 
     startSignalRConnection();
 
-    //document.getElementById("createForm").onsubmit = async (e) => {
-        //e.preventDefault();
-        //const presentationName = document.getElementById("conferenceName").value;
-        //const nickName = document.getElementById("nickName").value;
-        //await connection.invoke("CreatePresentation", presentationName, nickName);
-    //};
-
 </script>
+<style>
+    .fade-out {
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+</style>

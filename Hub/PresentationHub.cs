@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -116,8 +117,12 @@ namespace task6.Hub
             }
         }
 
-        public async Task<string> CreatePresentation(string presentationName, string userName)
+        public async Task<string?> CreatePresentation(string presentationName, string userName)
         {
+            if (_state.Presentations.Any(p => p.Name == presentationName))
+            {
+                return null;
+            }
             var presentationId = Guid.NewGuid().ToString();
             var presentation = new Presentation
             {
@@ -184,7 +189,7 @@ namespace task6.Hub
 
                     // Уведомляем всех участников группы об удалении слайда
                     //await Clients.Group(presentationId).SendAsync("SlideDeleted", slideId);
-                    await Clients.All.SendAsync("SlideDeleted", slideId);
+                    //await Clients.All.SendAsync("SlideDeleted", slideId);
                     await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize<Presentation>(presentation));
                 }
             }
@@ -267,8 +272,27 @@ namespace task6.Hub
         }
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            //Console.WriteLine($"Disconnected {Context.GetHttpContext()?.Request?.Query?.First(x => x.Key == "nickName").Value}" + Context.ConnectionId);
+            var id = Context.ConnectionId;
+            var pres = _state.Presentations.First(x => x.Users.Any(y => y.ConnectionId == id));
+            
+            RemoveUserFromPresentation(pres.Id, pres.Users.First(x => x.ConnectionId == id).Nickname);
             await base.OnDisconnectedAsync(exception);
+        }
+        public async void RemoveUserFromPresentation(string presentationId, string userNickName)
+        {
+            if (_state.Presentations.First(x => x.Id == presentationId).Users.Any(y => y.Nickname == userNickName))
+            {
+                var users = _state.Presentations.First(x => x.Id == presentationId).Users;
+                users.RemoveAll(x => x.Nickname == userNickName);
+                await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize<Presentation>(_state.Presentations.First(x => x.Id == presentationId)));
+                // Обновляем список пользователей презентации, если он пустой, можно удалить презентацию
+                if (users.Count == 0)
+                {
+                    _state.Presentations.RemoveAll(x => x.Id == presentationId);
+                    await _hubContext.Clients.AllExcept($"{Context.ConnectionId}").SendAsync("PresentationDeleted", new { Id = presentationId });
+                    return;
+                }
+            }
         }
     }
 }

@@ -239,47 +239,51 @@ connection.on("UserJoined", (userId, userName, role) => {
 });
 
 connection.on("SlideAdded", (newSlide, position) => {
-    const slideList = document.getElementById("slidesList");
+    //const slideList = document.getElementById("slidesList");
+    //var i = 1;
+    //const slideItem = document.createElement("li");
+    //slideItem.className = `list-group-item slide-item ${currentSlide === newSlide.id ? "active" : ""}`;
+    //slideItem.dataset.slideId = newSlide.id;
+    //slideItem.id = newSlide.id;
+    //slideItem.textContent = i++;
+    //slideItem.onclick = () => {
+    //    currentSlide = newSlide.id;
+    //    loadSlide(newSlide.id);
+    //    //sendUpdate();
+    //};
 
-    const slideItem = document.createElement("li");
-    slideItem.className = `list-group-item slide-item ${currentSlide === newSlide.id ? "active" : ""}`;
-    slideItem.dataset.slideId = newSlide.id;
-    slideItem.id = newSlide.id;
-    slideItem.textContent = `${newSlide.id}`;
-    slideItem.onclick = () => {
-        currentSlide = newSlide.id;
-        loadSlide(newSlide.id);
-        //sendUpdate();
-    };
-
-    if (position !== null) {
-        // Вставляем слайд в указанную позицию
-        slideList.appendChild(slideItem, slideList.children.find(x => x.id));
-    } else {
-        // Если позиция не указана или некорректна, добавляем в конец
-        slideList.appendChild(slideItem);
-    }
-    //sendUpdate();
-    console.log("New slide added at position:", position, newSlide);
+    //if (position !== null) {
+    //    // Вставляем слайд в указанную позицию
+    //    slideList.appendChild(slideItem, slideList.children.find(x => x.id));
+    //} else {
+    //    // Если позиция не указана или некорректна, добавляем в конец
+    //    slideList.appendChild(slideItem);
+    //}
+    ////sendUpdate();
+    //console.log("New slide added at position:", position, newSlide);
 });
 
 async function addSlide(presentationId) {
     const positionInput = document.getElementById("slidePositionInput");
-    const position = positionInput.value ? positionInput.value : null;
+    var position = positionInput.value ? positionInput.value : null;
 
-    if (!position) {
+    if (isNaN(position) || position == null) {
         // Если введено некорректное значение, очищаем поле и добавляем в конец
         positionInput.value = "";
+        await connection.invoke("AddSlide", presentationId, position);
     }
-
-    await connection.invoke("AddSlide", presentationId, position);
+    else {
+        position = Number(position);
+        const listItems = document.querySelectorAll("#slidesList li.list-group-item");
+        const listItem = Array.from(listItems).find(item => item.textContent.trim() == position);
+        await connection.invoke("AddSlide", presentationId, listItem.dataset.slideId);
+    }
 }
 
 connection.on("SlideDeleted", (slideId) => {
     const slideElement = document.getElementById(slideId);
     if (slideElement) {
         slideElement.remove();
-        console.log(`Slide $"{slideId}" deleted.`);
     }
     sendUpdate();
     // Если нужно обновить позиции (например, если они отображаются в UI)
@@ -291,13 +295,17 @@ connection.on("SlideDeleted", (slideId) => {
 
 async function deleteSlide(presentationId) {
     const positionInput = document.getElementById("slidePositionInput");
-    const position = positionInput.value ? positionInput.value : null;
-    if (!position) {
-        console.warn("Invalid position.");
+    var position = positionInput.value ? positionInput.value : null;
+
+    if (isNaN(position) || position == null) {
         positionInput.value = "";
-        return;
     }
-    await connection.invoke("DeleteSlide", presentationId, position);
+    else {
+        position = Number(position);
+        const listItems = document.querySelectorAll("#slidesList li.list-group-item");
+        const listItem = Array.from(listItems).find(item => item.textContent.trim() == position);
+        await connection.invoke("DeleteSlide", presentationId, listItem.dataset.slideId);
+    }
 }
 connection.on("ReceiveUpdate", (data) => {
     slideElements = JSON.parse(data);
@@ -360,12 +368,12 @@ function renderUsersList(users) {
 function renderSlidesList(slides) {
     const slideList = document.getElementById("slidesList");
     slideList.innerHTML = "";
-
+    var i = 1;
     slides.forEach(slide => {
         const slideItem = document.createElement("li");
         slideItem.className = `list-group-item slide-item ${currentSlide === slide.Id ? "active" : ""}`;
         slideItem.dataset.slideId = slide.Id;
-        slideItem.textContent = `${slide.Id}`;
+        slideItem.textContent = i++;
         slideItem.onclick = () => {
             currentSlide = slide.Id;
             loadSlide(slide.Id);

@@ -21,9 +21,13 @@
         <!-- Список слайдов -->
         <div class="col-2 border-end overflow-auto" style="height: 80vh;">
             <ul class="list-group" id="slidesList">
-                @if (Model != null && Model.Slides != null) foreach (var slide in Model.Slides)
+                @if (Model != null && Model.Slides != null) 
                 {
-                    <li class="list-group-item slide-item" data-slide-id="@slide.Id" id="@slide.Id">@slide.Id</li>
+                    int i = 1;
+                    foreach (var slide in Model.Slides)
+                    {
+                        <li class="list-group-item slide-item" data-slide-id="@slide.Id" id="@slide.Id">@i++</li>
+                    }
                 }
             </ul>
         </div>

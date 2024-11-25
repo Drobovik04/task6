@@ -23,13 +23,25 @@ namespace task6.Controllers
         public async Task<IActionResult> Join(string idPresentation, string nickName)
         {
             //await _presentationHub.JoinPresentation(idPresentation, nickName);
+            var isExists = _presentationHub._state.Presentations.First(x => x.Id == idPresentation).Users.Any(y => y.Nickname == nickName);
+            if (isExists)
+            {
+                TempData["ErrorUsername"] = "User name already exists";
+                return RedirectToAction("Index");
+            }
             return RedirectToAction("Presentation", new {idPresentation, isOwner = false, nickName});
         }
 
         [HttpPost]
         public async Task<IActionResult> Create(string conferenceName, string nickName)
         {
-            string idPresentation = await _presentationHub.CreatePresentation(conferenceName, nickName);
+            string? idPresentation = await _presentationHub.CreatePresentation(conferenceName, nickName);
+            if (idPresentation == null)
+            {
+                TempData["ErrorCreate"] = "Presentation name already exists";
+
+                return RedirectToAction("Index");
+            }
             //return RedirectToAction("Index");
             return RedirectToAction("Presentation", new { idPresentation, isOwner = true, nickName});
         }
