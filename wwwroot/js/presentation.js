@@ -3,6 +3,7 @@ let slideElements = {}; // Хранит элементы для каждого �
 let selectedElement = null; // Текущий выделенный элемент
 let addingElement = null; // Тип добавляемого элемента
 let dragOffset = { x: 0, y: 0 }; // Для корректного перемещения
+var userRole;
 
 const editorContainer = document.createElement('div'); // Для ввода текста
 
@@ -53,8 +54,8 @@ function setupEditor() {
     editorContainer.innerHTML = `
                 <textarea id="editorInput" rows="3" style="width: 200px;"></textarea>
                 <div class="d-flex mt-1">
-                    <button id="saveEditor" class="btn btn-primary btn-sm">Сохранить</button>
-                    <button id="deleteEditor" class="btn btn-danger btn-sm">Удалить</button>
+                    <button id="saveEditor" class="btn btn-primary btn-sm">Save</button>
+                    <button id="deleteEditor" class="btn btn-danger btn-sm">Delete</button>
                 <\div
             `;
     document.body.appendChild(editorContainer);
@@ -73,15 +74,20 @@ function getClickPosition(e, container) {
 }
 
 function addElementToSlide(type, X, Y, Width, Height) {
+    if (userRole == 2) {
+        return;
+    }
     var element;
     if (type == "text") {
-        element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Content: type === 'text' ? 'Текст' : '' };
+        element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Content: type === 'text' ? 'Text' : '' };
     }
     else if (type == "circle") {
         element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Size: { Width, Height}, Color: "#0000ff" }; //пока ширина и высота заглушка
     }
     //if (!slideElements.Slides[currentSlide].Elements) slideElements.Slides[currentSlide].Elements = [];
-    slideElements.Slides.find(x => x.Id == currentSlide).Elements.push(element);
+    if (slideElements.Slides.find(x => x.Id == currentSlide) != null) {
+        slideElements.Slides.find(x => x.Id == currentSlide).Elements.push(element);
+    }
     renderSlideElements();
     saveSlideChanges()
 }
@@ -141,6 +147,9 @@ function renderSlideElements() {
 }
 
 function dragStart(e, index) {
+    if (userRole == 2) {
+        return;
+    }
     selectedElement = index;
     dragOffset.x = e.offsetX;
     dragOffset.y = e.offsetY;
@@ -148,6 +157,9 @@ function dragStart(e, index) {
 }
 
 function dragEnd(e) {
+    if (userRole == 2) {
+        return;
+    }
     const rect = document.getElementById('currentSlide').getBoundingClientRect();
     const newX = e.clientX - rect.left - dragOffset.x;
     const newY = e.clientY - rect.top - dragOffset.y;
@@ -166,6 +178,9 @@ function dragEnd(e) {
 }
 
 function selectElement(index, element) {
+    if (userRole == 2) {
+        return;
+    }
     selectedElement = index;
 
     const currentElement = slideElements.Slides.find(x => x.Id == currentSlide).Elements.find(x => x.Id == index);
@@ -177,6 +192,9 @@ function selectElement(index, element) {
 }
 
 function deselectElement() {
+    if (userRole == 2) {
+        return;
+    }
     selectedElement = null;
     editorContainer.style.display = 'none';
     renderSlideElements();
@@ -189,7 +207,15 @@ function showEditor(element, domElement) {
     document.getElementById('editorInput').value = element.Content;
 }
 
+//function moveEditorAfterDrag(domElement) {
+//    editorContainer.style.left = `${domElement.getBoundingClientRect().left}px`;
+//    editorContainer.style.top = `${domElement.getBoundingClientRect().top + domElement.offsetHeight}px`;
+//}
+
 function saveEditor() {
+    if (userRole == 2) {
+        return;
+    }
     if (selectedElement !== null) {
         const content = document.getElementById('editorInput').value;
         slideElements.Slides.find(x => x.Id == currentSlide).Elements.find(x => x.Id == selectedElement).Content = content; // Сохраняем Markdown
@@ -200,6 +226,9 @@ function saveEditor() {
 }
 
 function deleteEditor() {
+    if (userRole == 2) {
+        return;
+    }
     if (selectedElement !== null) {
         slideElements.Slides.find(x => x.Id == currentSlide).Elements.filter(elem => elem.Id != selectedElement);
         selectedElement = null;
@@ -215,27 +244,27 @@ const connection = new signalR.HubConnectionBuilder()
     .build();
 
 connection.on("UserJoined", (userId, userName, role) => {
-    const userList = document.getElementById("usersList");
-    const newUser = document.createElement("li");
-    newUser.className = "list-group-item d-flex justify-content-between align-items-center";
-    if (owner == "True") {
-        newUser.innerHTML = userName + `<div>
-                                    <form method="post" asp-page-handler="UserAction" class="d-inline">
-                                        <input type="hidden" name="userId" value=$"{userId}" />
-                                        <input type="hidden" name="action" value="action1" />
-                                        <button type="submit" class="btn btn-sm role-btn btn-primary"><i class="fa-solid fa-pen"></i></button>
-                                    </form>
-                                    <form method="post" asp-page-handler="UserAction" class="d-inline">
-                                        <input type="hidden" name="userId" value=$"{userId}" />
-                                        <input type="hidden" name="action" value="action2" />
-                                        <button type="submit" class="btn btn-sm role-btn btn-primary"><i class="fa-solid fa-eye"></i></button>
-                                    </form>
-                                </div>`;
-    }
-    else {
-        newUser.innerHTML = userName;
-    }
-    userList.appendChild(newUser);
+    //const userList = document.getElementById("usersList");
+    //const newUser = document.createElement("li");
+    //newUser.className = "list-group-item d-flex justify-content-between align-items-center";
+    //if (owner == "True") {
+    //    newUser.innerHTML = userName + `<div>
+    //                                <form method="post" asp-page-handler="UserAction" class="d-inline">
+    //                                    <input type="hidden" name="userId" value=$"{userId}" />
+    //                                    <input type="hidden" name="action" value="action1" />
+    //                                    <button type="submit" class="btn btn-sm role-btn btn-primary"><i class="fa-solid fa-pen"></i></button>
+    //                                </form>
+    //                                <form method="post" asp-page-handler="UserAction" class="d-inline">
+    //                                    <input type="hidden" name="userId" value=$"{userId}" />
+    //                                    <input type="hidden" name="action" value="action2" />
+    //                                    <button type="submit" class="btn btn-sm role-btn btn-primary"><i class="fa-solid fa-eye"></i></button>
+    //                                </form>
+    //                            </div>`;
+    //}
+    //else {
+    //    newUser.innerHTML = userName;
+    //}
+    //userList.appendChild(newUser);
 });
 
 connection.on("SlideAdded", (newSlide, position) => {
@@ -264,6 +293,9 @@ connection.on("SlideAdded", (newSlide, position) => {
 });
 
 async function addSlide(presentationId) {
+    if (userRole != 0) {
+        return;
+    }
     const positionInput = document.getElementById("slidePositionInput");
     var position = positionInput.value ? positionInput.value : null;
 
@@ -294,6 +326,9 @@ connection.on("SlideDeleted", (slideId) => {
 });
 
 async function deleteSlide(presentationId) {
+    if (userRole != 0) {
+        return;
+    }
     const positionInput = document.getElementById("slidePositionInput");
     var position = positionInput.value ? positionInput.value : null;
 
@@ -309,6 +344,9 @@ async function deleteSlide(presentationId) {
 }
 connection.on("ReceiveUpdate", (data) => {
     slideElements = JSON.parse(data);
+    var urlParams = new URLSearchParams(window.location.search);
+    var nickname = urlParams.get('nickName');
+    userRole = slideElements.Users.find(x => x.Nickname == nickname).Role;
     renderSlidesList(slideElements.Slides); // Рендерим обновленный список слайдов
     renderUsersList(slideElements.Users);  // Рендерим обновленный список пользователей
     slideElements = slideElements;
@@ -340,23 +378,27 @@ function renderUsersList(users) {
     userList.innerHTML = "";
     var urlParams = new URLSearchParams(window.location.search);
     var owner = urlParams.get('isOwner');
+    var nick = urlParams.get('nickName');
     users.forEach(user => {
         const userList = document.getElementById("usersList");
         const newUser = document.createElement("li");
         newUser.className = "list-group-item d-flex justify-content-between align-items-center";
-        if (owner == "True") {
+        if (owner == "True" && user.Nickname != nick) {
+            const roleClassEditor = user.Role == 1 ? "btn-outline-success" : "btn-outline-secondary";
+            const roleClassViewer = user.Role == 2 ? "btn-outline-success" : "btn-outline-secondary";
             newUser.innerHTML = user.Nickname + `<div>
-                                    <form method="post" asp-page-handler="UserAction" class="d-inline">
-                                        <input type="hidden" name=$"{user.ConnectionId}" value=$"{user.ConnectionId}" />
-                                        <input type="hidden" name="action" value="action1" />
-                                        <button type="submit" class="btn btn-sm role-btn btn-primary"><i class="fa-solid fa-pen"></i></button>
-                                    </form>
-                                    <form method="post" asp-page-handler="UserAction" class="d-inline">
-                                        <input type="hidden" name=$"{user.ConnectionId}" value=$"{user.ConnectionId}" />
-                                        <input type="hidden" name="action" value="action2" />
-                                        <button type="submit" class="btn btn-sm role-btn btn-primary"><i class="fa-solid fa-eye"></i></button>
-                                    </form>
+                                    <div class="d-inline changerole">
+                                        <input type="hidden" name=$"{user.Nickname}" value=$"{user.ConnectionId}" />
+                                        <input type="hidden" name="action" value="editor" />
+                                        <button class="btn btn-sm role-btn ${roleClassEditor}" onclick="changeRole('${slideElements.Id}', '${user.Nickname}', 1)"><i class="fa-solid fa-pen"></i></button>
+                                    </div>
+                                    <div class="d-inline changerole">
+                                        <input type="hidden" name=$"{user.Nickname}" value=$"{user.ConnectionId}" />
+                                        <input type="hidden" name="action" value="viewer" />
+                                        <button class="btn btn-sm role-btn ${roleClassViewer}" onclick="changeRole('${slideElements.Id}', '${user.Nickname}', 2)"><i class="fa-solid fa-eye"></i></button>
+                                    </div>
                                 </div>`;
+
         }
         else {
             newUser.innerHTML = user.Nickname;
@@ -392,6 +434,18 @@ function saveSlideChanges() {
     //}
 }
 
+async function changeRole(presentationId, username, role) {
+    var urlParams = new URLSearchParams(window.location.search);
+    var owner = urlParams.get('isOwner');
+
+    if (owner == "True") {
+        await connection.invoke("ChangeRole", presentationId, username, role);
+    }
+    else {
+        //не имеет права
+    }
+}
+
 function updateRoleButtons(user, parentElement) {
     const buttons = parentElement.querySelectorAll(".role-btn");
     buttons.forEach(btn => {
@@ -399,6 +453,7 @@ function updateRoleButtons(user, parentElement) {
         btn.classList.toggle("btn-outline-secondary");
     });
 }
+
 async function startConnection() {
     try {
         await connection.start();
@@ -406,6 +461,7 @@ async function startConnection() {
         let nickname = urlParams.get('nickName');
         const presentationId = urlParams.get('idPresentation');
         await connection.invoke("JoinPresentation", presentationId, nickname);
+        userRole = slideElements.Users.find(x => x.Nickname == nickname).Role;
         console.log("SignalR connection started.", connection.id);
     } catch (err) {
         console.error("Error while starting connection: ", err);

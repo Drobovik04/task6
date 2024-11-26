@@ -15,6 +15,7 @@ namespace task6.Hub
         public Dictionary<string, string> UserToPresentationMap { get; set; } = new Dictionary<string, string>();
 
         public List<User> Users { get; set; } = new List<User>();
+        public Dictionary<string, bool> AdminEnterAfterCreate { get; set; } = new Dictionary<string, bool>();
     }
 
     public class PresentationHub: Microsoft.AspNetCore.SignalR.Hub
@@ -91,12 +92,25 @@ namespace task6.Hub
                 // Добавляем пользователя как "Viewer" если его еще нет
                 if (!findPres.Users.Any(r => r.Nickname == userName))
                 {
-                    findPres.Users.Add(new User
+                    if (_state.AdminEnterAfterCreate[presentationId] == false)
                     {
-                        ConnectionId = Context.ConnectionId,
-                        Nickname = userName,
-                        Role = UserType.Viewer,
-                    });
+                        findPres.Users.Add(new User
+                        {
+                            ConnectionId = Context.ConnectionId,
+                            Nickname = userName,
+                            Role = UserType.Owner,
+                        });
+                        _state.AdminEnterAfterCreate[presentationId] = true;
+                    }
+                    else
+                    {
+                        findPres.Users.Add(new User
+                        {
+                            ConnectionId = Context.ConnectionId,
+                            Nickname = userName,
+                            Role = UserType.Viewer,
+                        });
+                    }
                 }
                 else
                 {
@@ -139,7 +153,7 @@ namespace task6.Hub
                     }
                 }
             };
-
+            _state.AdminEnterAfterCreate.Add(presentationId, false);
             _state.Presentations.Add(presentation);
             //_state.UserToPresentationMap[Context.ConnectionId] = presentationId;
             //await _hubContext.Groups.AddToGroupAsync(Context.ConnectionId, presentationId);
@@ -195,16 +209,20 @@ namespace task6.Hub
             }
         }
 
-        public async Task UpdateRole(string presentationId, string targetUserName, UserType role)
+        public async Task ChangeRole(string presentationId, string targetUserName, UserType role)
         {
             var findPres = _state.Presentations.First(x => x.Id == presentationId);
             if (findPres != null)
             {
-                var userRole = findPres.Users.FirstOrDefault(r => r.Nickname == targetUserName);
-                if (userRole != null)
+                var user = findPres.Users.FirstOrDefault(r => r.Nickname == targetUserName);
+                if (user != null)
                 {
-                    userRole.Role = role;
-                    await Clients.Group(presentationId).SendAsync("RoleUpdated", targetUserName, role);
+                    if (user.Role != role)
+                    {
+                        user.Role = role;
+                        //await Clients.Group(presentationId).SendAsync("RoleUpdated", targetUserName, role);
+                        await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize<Presentation>(findPres));
+                    }
                 }
             }
         }
@@ -274,8 +292,13 @@ namespace task6.Hub
         {
             var id = Context.ConnectionId;
             var pres = _state.Presentations.First(x => x.Users.Any(y => y.ConnectionId == id));
-            
-            RemoveUserFromPresentation(pres.Id, pres.Users.First(x => x.ConnectionId == id).Nickname);
+            if (_state.AdminEnterAfterCreate.ContainsKey(pres.Id) && _state.AdminEnterAfterCreate[pres.Id] == false)
+            {
+                _state.AdminEnterAfterCreate[pres.Id] = true;
+                return;
+            }
+            var user = pres.Users.First(x => x.ConnectionId == id);
+            RemoveUserFromPresentation(pres.Id, user.Nickname);
             await base.OnDisconnectedAsync(exception);
         }
         public async void RemoveUserFromPresentation(string presentationId, string userNickName)
@@ -283,6 +306,15 @@ namespace task6.Hub
             if (_state.Presentations.First(x => x.Id == presentationId).Users.Any(y => y.Nickname == userNickName))
             {
                 var users = _state.Presentations.First(x => x.Id == presentationId).Users;
+                var exactUser = users.Find(x => x.Nickname == userNickName);
+                //if (exactUser.Role == UserType.Owner && _state.Presentations.First(x => x.Id == presentationId).Users.Count == 1)
+                //{
+                //    users.RemoveAll(x => x.Nickname == userNickName);
+                //}
+                //else if (exactUser.Role != UserType.Owner && _state.Presentations.First(x => x.Id == presentationId).Users.Count != 1)
+                //{
+                //    users.RemoveAll(x => x.Nickname == userNickName);
+                //}
                 users.RemoveAll(x => x.Nickname == userNickName);
                 await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize<Presentation>(_state.Presentations.First(x => x.Id == presentationId)));
                 // Обновляем список пользователей презентации, если он пустой, можно удалить презентацию

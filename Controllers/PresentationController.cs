@@ -22,6 +22,11 @@ namespace task6.Controllers
         [HttpPost]
         public async Task<IActionResult> Join(string idPresentation, string nickName)
         {
+            if (nickName.Length == 0)
+            {
+                TempData["ErrorUsername"] = "User name cannot be empty";
+                return RedirectToAction("Index");
+            }
             //await _presentationHub.JoinPresentation(idPresentation, nickName);
             var isExists = _presentationHub._state.Presentations.First(x => x.Id == idPresentation).Users.Any(y => y.Nickname == nickName);
             if (isExists)
@@ -35,6 +40,11 @@ namespace task6.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(string conferenceName, string nickName)
         {
+            if (conferenceName.Length == 0)
+            {
+                TempData["ErrorCreate"] = "Presentation name cannot be empty";
+                return RedirectToAction("Index");
+            }
             string? idPresentation = await _presentationHub.CreatePresentation(conferenceName, nickName);
             if (idPresentation == null)
             {
@@ -58,18 +68,18 @@ namespace task6.Controllers
             }
             return View(pres);
         }
-        public IActionResult ChangeRole(string userId, string role, string idPresentation)
-        {
-            UserType newRole = UserType.Viewer;
-            switch (role)
-            {
-                case "Editor": { newRole = UserType.Editor; break; }
-                case "Viewer": { newRole = UserType.Viewer; break; }
-            };
-            _presentationHub._state.Presentations.Find(x => x.Id == idPresentation)!.Users.Find(x => x.ConnectionId == userId)!.Role = newRole;
-            var pres = _presentationHub._state.Presentations.FirstOrDefault(x => x.Id == idPresentation);
-            return View(pres);
-        }
+        //public IActionResult ChangeRole(string userId, string role, string idPresentation)
+        //{
+        //    UserType newRole = UserType.Viewer;
+        //    switch (role)
+        //    {
+        //        case "Editor": { newRole = UserType.Editor; break; }
+        //        case "Viewer": { newRole = UserType.Viewer; break; }
+        //    };
+        //    _presentationHub._state.Presentations.Find(x => x.Id == idPresentation)!.Users.Find(x => x.ConnectionId == userId)!.Role = newRole;
+        //    var pres = _presentationHub._state.Presentations.FirstOrDefault(x => x.Id == idPresentation);
+        //    return View(pres);
+        //}
 
     }
 }
