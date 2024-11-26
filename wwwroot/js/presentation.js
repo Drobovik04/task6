@@ -388,6 +388,21 @@ connection.on("ReceiveUpdate", (data) => {
     }
 });
 
+function renderAll() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var nickname = urlParams.get('nickName');
+    userRole = slideElements.Users.find(x => x.Nickname == nickname).Role;
+    slideElements = slideElements;
+    renderSlideElements();
+    if (currentSlide) {
+        const slide = slideElements.Slides.find(s => s.Id === currentSlide);
+        if (slide) {
+            slideElements.Slides.find(x => x.Id == currentSlide).Elements = slide.Elements || [];
+            renderSlideElements();
+        }
+    }
+}
+
 connection.on("TestGroup", (message) => {
     console.log("TestGroup message received:", message);
 });
@@ -461,6 +476,55 @@ async function changeRole(presentationId, username, role) {
     }
     else {
         //не имеет права
+    }
+}
+
+document.addEventListener('fullscreenchange', () => {
+    const isFullscreen = document.fullscreenElement != null;
+    const presentationContainer = document.getElementById('currentSlide');
+    if (isFullscreen) {
+        document.addEventListener('keydown', handleSlideNavigation);
+        presentationContainer.addEventListener('click', handleSlideNavigation);
+    } else {
+        document.removeEventListener('keydown', handleSlideNavigation);
+        presentationContainer.removeEventListener('click', handleSlideNavigation);
+    }
+});
+function presentMode() {
+    const presentationContainer = document.getElementById('currentSlide');
+    presentationContainer.requestFullscreen().catch(err => {
+        alert(`Error attempting to enable full-screen mode: ${err.message}`);
+    });
+    renderSlideElements();
+    document.addEventListener('keydown', handleSlideNavigation);
+    presentationContainer.addEventListener('click', handleSlideNavigation);
+}
+
+function handleSlideNavigation(event) {
+    if (event.type === 'keydown') {
+        if (event.key === 'ArrowRight') {
+            nextSlide();
+        } else if (event.key === 'ArrowLeft') {
+            previousSlide();
+        }
+    } else if (event.type === 'click') {
+        nextSlide();
+    }
+}
+
+function nextSlide() {
+    var index = slideElements.Slides.findIndex(x => x.Id == currentSlide);
+    if (index < slideElements.Slides.length - 1) {
+        currentSlide = slideElements.Slides[index + 1].Id;
+        renderSlideElements();
+    }
+}
+
+function previousSlide() {
+    var index = slideElements.Slides.findIndex(x => x.Id == currentSlide);
+    if (index > 0) {
+        currentSlide = slideElements.Slides[index - 1].Id;
+        renderSlideElements();
     }
 }
 
