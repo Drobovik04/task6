@@ -70,20 +70,20 @@
 <script>
     const nickNameInput = document.getElementById("nickName");
 
-    // При изменении значения обновляем скрытые поля
+    
     nickNameInput.addEventListener("input", () => {
         const hiddenNickFields = document.querySelectorAll(".hidden-nick");
         hiddenNickFields.forEach(field => {
             field.value = nickNameInput.value.trim();
         });
     });
-    // Подключение к SignalR
+    
     const connection = new signalR.HubConnectionBuilder()
-        .withUrl("/presentationHub") // URL хаба
+        .withUrl("/presentationHub") 
         .build();
 
     connection.on("PresentationAdded", (presentation) => {
-        // Добавляем новую презентацию в список
+        
         const presentationsList = document.getElementById("presentationsList");
         const newForm = document.createElement("form");
         newForm.method = "post";
@@ -108,7 +108,7 @@
         });
     });
 
-    // Запускаем соединение
+    
     async function startSignalRConnection() {
         try {
             await connection.start();

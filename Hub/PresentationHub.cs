@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using task6.Models;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace task6.Hub
 {
@@ -89,7 +88,6 @@ namespace task6.Hub
             var findPres = _state.Presentations.First(x => x.Id == presentationId);
             if (findPres != null)
             {
-                // Добавляем пользователя как "Viewer" если его еще нет
                 if (!findPres.Users.Any(r => r.Nickname == userName))
                 {
                     if (_state.AdminEnterAfterCreate[presentationId] == false)
@@ -117,17 +115,9 @@ namespace task6.Hub
                     findPres.Users.Find(x => x.Nickname == userName)!.ConnectionId=Context.ConnectionId;
                 }
 
-                //_state.UserToPresentationMap[Context.ConnectionId] = presentationId;
 
-                await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize(findPres));
-                //string[] asdasdas = findPres.Users.Where(x => x==x/*.ConnectionId != Context.ConnectionId*/).Select((x, y) => x.ConnectionId).ToArray();
-                //await _hubContext.Clients.Users(asdasdas).SendAsync("UserJoined", Context.ConnectionId, userName, "Viewer");
-                //await _hubContext.Clients.All.SendAsync("UserJoined", Context.ConnectionId, userName, "Viewer");
-                //await _hubContext.Clients.All.SendAsync("UserJoined", Context.ConnectionId, userName, "Viewer");
-                //await _hubContext.Groups.AddToGroupAsync(Context.ConnectionId, presentationId);
-                //await _hubContext.Clients.Group(presentationId).SendAsync("UserJoined", Context.ConnectionId, userName, "Viewer");
-                //await _hubContext.Clients.Users(_state.UserToPresentationMap.Keys.Where(x => _state.UserToPresentationMap[x] == presentationId)).SendAsync("UserJoined", Context.ConnectionId, userName, "Viewer");
-                //await _hubContext.Clients.Group(presentationId).SendAsync("TestGroup", "Da rabotay ti uzhe");
+                //await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize(findPres));
+                await _hubContext.Clients.Clients(_state.Presentations.First(x => x.Id == presentationId).Users.Select(y => y.ConnectionId)).SendAsync("ReceiveUpdate", JsonSerializer.Serialize(findPres));
             }
         }
 
@@ -155,9 +145,7 @@ namespace task6.Hub
             };
             _state.AdminEnterAfterCreate.Add(presentationId, false);
             _state.Presentations.Add(presentation);
-            //_state.UserToPresentationMap[Context.ConnectionId] = presentationId;
-            //await _hubContext.Groups.AddToGroupAsync(Context.ConnectionId, presentationId);
-            // Уведомляем всех пользователей о новой презентации
+
             await _hubContext.Clients.AllExcept($"{Context.ConnectionId}").SendAsync("PresentationAdded", new { Id = presentationId, Name = presentationName });
             return presentationId;
         }
@@ -166,28 +154,23 @@ namespace task6.Hub
             var presentation = _state.Presentations.FirstOrDefault(p => p.Id == presentationId);
             if (presentation != null)
             {
-                // Создаем новый слайд с уникальным ID
                 var newSlide = new Slide
                 {
                     Id = Guid.NewGuid().ToString(),
                     Elements = new List<Element>()
                 };
 
-                // Определяем индекс для вставки
                 if (position != null)
                 {
                     presentation.Slides.Insert(presentation.Slides.FindIndex(x => x.Id == position), newSlide);
                 }
                 else
                 {
-                    // Если позиция не указана или некорректна, добавляем в конец
                     presentation.Slides.Add(newSlide);
                 }
 
-                // Уведомляем всех участников группы о добавлении слайда
-                //await _hubContext.Clients.Group(presentationId).SendAsync("SlideAdded", newSlide, position);
-                await _hubContext.Clients.All.SendAsync("SlideAdded", newSlide, position);
-                await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize<Presentation>(presentation));
+                //await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize<Presentation>(presentation));
+                await _hubContext.Clients.Clients(_state.Presentations.First(x => x.Id == presentationId).Users.Select(y => y.ConnectionId)).SendAsync("ReceiveUpdate", JsonSerializer.Serialize(presentation));
             }
         }
 
@@ -201,10 +184,8 @@ namespace task6.Hub
                 {
                     presentation.Slides.Remove(slide);
 
-                    // Уведомляем всех участников группы об удалении слайда
-                    //await Clients.Group(presentationId).SendAsync("SlideDeleted", slideId);
-                    //await Clients.All.SendAsync("SlideDeleted", slideId);
-                    await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize<Presentation>(presentation));
+                    //await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize<Presentation>(presentation));
+                    await _hubContext.Clients.Clients(_state.Presentations.First(x => x.Id == presentationId).Users.Select(y => y.ConnectionId)).SendAsync("ReceiveUpdate", JsonSerializer.Serialize(presentation));
                 }
             }
         }
@@ -220,69 +201,30 @@ namespace task6.Hub
                     if (user.Role != role)
                     {
                         user.Role = role;
-                        //await Clients.Group(presentationId).SendAsync("RoleUpdated", targetUserName, role);
-                        await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize<Presentation>(findPres));
+                        //await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize<Presentation>(findPres));
+                        await _hubContext.Clients.Clients(_state.Presentations.First(x => x.Id == presentationId).Users.Select(y => y.ConnectionId)).SendAsync("ReceiveUpdate", JsonSerializer.Serialize(findPres));
                     }
                 }
             }
         }
         public async Task UpdatePresentation(string data)
         {
-            // Обновление данных презентации
             Presentation pres = JsonSerializer.Deserialize<Presentation>(data);
             var presToChange = _state.Presentations.First(x => x.Id == pres.Id);
             presToChange.Users = pres.Users;
             presToChange.Slides = pres.Slides;
             presToChange.Name = pres.Name;
 
-            // Отправляем данные всем клиентам
-            await _hubContext.Clients.All.SendAsync("ReceiveUpdate", data);
+            //await _hubContext.Clients.All.SendAsync("ReceiveUpdate", data);
+            await _hubContext.Clients.Clients(_state.Presentations.First(x => x.Id == pres.Id).Users.Select(y => y.ConnectionId)).SendAsync("ReceiveUpdate", data);
         }
 
-        //public override async Task OnDisconnectedAsync(Exception exception)
-        //{
-        //    if (_state.UserToPresentationMap.TryGetValue(Context.ConnectionId, out var presentationId))
-        //    {
-        //        var findPres = _state.Presentations.FirstOrDefault(x => x.Id == presentationId);
-        //        if (findPres != null)
-        //        {
-        //            var user = findPres.Users.FirstOrDefault(u => u.Nickname == Context.ConnectionId);
-        //            if (user != null)
-        //            {
-        //                findPres.Users.Remove(user);
-        //                await Clients.Group(presentationId).SendAsync("UserLeft", user.Nickname);
-        //            }
-        //        }
-
-        //        _state.UserToPresentationMap.Remove(Context.ConnectionId);
-        //        await Groups.RemoveFromGroupAsync(Context.ConnectionId, presentationId);
-        //    }
-
-        //    await base.OnDisconnectedAsync(exception);
-        //}
         public async Task CheckGroupMembership(string groupId)
         {
             Console.WriteLine($"Broadcasting to group {groupId}");
             await Clients.Group(groupId).SendAsync("TestGroup", "Test message");
         }
 
-        //public override async Task OnDisconnectedAsync(Exception? exception)
-        //{
-        //    var user = _state.Presentations.SelectMany(p => p.Users)
-        //                              .FirstOrDefault(u => u.ConnectionId == Context.ConnectionId);
-
-        //    if (user != null)
-        //    {
-        //        // Удаляем пользователя из презентации
-        //        var presentation = _state.Presentations.First(p => p.Users.Contains(user));
-        //        presentation.Users.Remove(user);
-
-        //        // Оповещаем группу о выходе пользователя
-        //        await Clients.Group(presentation.Id).SendAsync("UserLeft", user.Nickname);
-        //    }
-
-        //    await base.OnDisconnectedAsync(exception);
-        //}
         public override async Task OnConnectedAsync()
         {
             await base.OnConnectedAsync();
@@ -316,8 +258,9 @@ namespace task6.Hub
                 //    users.RemoveAll(x => x.Nickname == userNickName);
                 //}
                 users.RemoveAll(x => x.Nickname == userNickName);
-                await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize<Presentation>(_state.Presentations.First(x => x.Id == presentationId)));
-                // Обновляем список пользователей презентации, если он пустой, можно удалить презентацию
+                //await _hubContext.Clients.All.SendAsync("ReceiveUpdate", JsonSerializer.Serialize<Presentation>(_state.Presentations.First(x => x.Id == presentationId)));
+                await _hubContext.Clients.Clients(_state.Presentations.First(x => x.Id == presentationId).Users.Select(y => y.ConnectionId)).SendAsync("ReceiveUpdate", JsonSerializer.Serialize<Presentation>(_state.Presentations.First(x => x.Id == presentationId)));
+
                 if (users.Count == 0)
                 {
                     _state.Presentations.RemoveAll(x => x.Id == presentationId);

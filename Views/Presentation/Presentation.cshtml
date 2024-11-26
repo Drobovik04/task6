@@ -6,7 +6,7 @@
 
 <div class="container-fluid">
     <div class="row">
-        <!-- Панель инструментов -->
+        
         <div class="col-12 bg-light py-2 mb-3">
             <button id="addText" class="btn btn-secondary"><i class="fa-solid fa-font"></i></button>
             <button id="addCircle" class="btn btn-secondary"><i class="fa-solid fa-circle"></i></button>
@@ -15,10 +15,10 @@
     <div class="row">
         <div>
             <input type="text" id="slidePositionInput" placeholder="Position (optional)" />
-            <button onclick="addSlide('@Model.Id')">Add Slide</button>
-            <button onclick="deleteSlide('@Model.Id')">Delete Slide</button>
+            <button class="btn btn-secondary mb-1" onclick="addSlide('@Model.Id')">+</button>
+            <button class="btn btn-secondary mb-1" onclick="deleteSlide('@Model.Id')">-</button>
         </div>
-        <!-- Список слайдов -->
+        
         <div class="col-2 border-end overflow-auto" style="height: 80vh;">
             <ul class="list-group" id="slidesList">
                 @if (Model != null && Model.Slides != null) 
@@ -32,39 +32,16 @@
             </ul>
         </div>
 
-        <!-- Центральная панель (текущий слайд) -->
+        
         <div class="col-8 text-center position-relative" style="height: 80vh; border-right: 1px solid #ddd;">
             <div id="currentSlide" class="position-relative" style="height: 100%; border: 1px solid #ccc;">
-                <!-- Здесь появляются элементы -->
+                
             </div>
         </div>
 
-        <!-- Список пользователей -->
+        
         <div class="col-2">
             <ul class="list-group" id="usersList">
-@*                 @if (Model != null && Model.Users != null) foreach (var user in Model.Users)
-                {
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        @user.Nickname
-                        @if ((bool)ViewData["Owner"]! == true)
-                        {
-                            <div>
-                                <form method="post" asp-action="ChangeRole" class="d-inline">
-                                    <input type="hidden" name="userId" value="@user.ConnectionId" />
-                                    <input type="hidden" name="role" value="Editor" />
-                                    <input type="hidden" name="idPresentation" value="@Model.Id" />
-                                    <button type="submit" class="btn btn-sm role-btn btn-primary"><i class="fa-solid fa-pen"></i></button>
-                                </form>
-                                <form method="post" asp-action="ChangeRole" class="d-inline">
-                                    <input type="hidden" name="userId" value="@user.ConnectionId" />
-                                    <input type="hidden" name="role" value="Viewer" />
-                                    <input type="hidden" name="idPresentation" value="@Model.Id" />
-                                    <button type="submit" class="btn btn-sm role-btn btn-primary"><i class="fa-solid fa-eye"></i></button>
-                                </form>
-                            </div>
-                        }
-                    </li>
-                } *@
             </ul>
         </div>
     </div>
@@ -84,7 +61,7 @@
     }
 
     .slide-element.selected {
-        border: 2px thin rgba(0, 0, 0, 0.15); /* поменять на серенький под тему */
+        border: 2px thin rgba(0, 0, 0, 0.15);
     }
 
     #editorContainer {
