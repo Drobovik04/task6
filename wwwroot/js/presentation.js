@@ -26,6 +26,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.getElementById("addRectangle").addEventListener("click", () => startAddingElement('rectangle'));
 
+    //document.getElementById("addImage").addEventListener("click", () => {
+    //    document.getElementById("imageInput").click();
+    //});
+    //document.getElementById("imageInput").addEventListener("change", handleImageUpload);
+
+    document.getElementById("exportToPDF").addEventListener("click", () => exportToPDF());
 
     const currentSlideContainer = document.getElementById('currentSlide');
     currentSlideContainer.addEventListener('dragover', (e) => e.preventDefault());
@@ -77,6 +83,31 @@ function getClickPosition(e, container) {
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
 }
 
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+
+    if (file) {
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+            const imageSrc = e.target.result;
+
+            // Задаем параметры изображения
+            const image = {
+                id: Date.now(), // Уникальный идентификатор
+                top: "100px",
+                left: "100px",
+                width: "200px",
+                height: "150px",
+                src: imageSrc
+            };
+
+        };
+
+        reader.readAsDataURL(file); // Преобразуем файл в base64
+    }
+}
+
 function addElementToSlide(type, X, Y, Width, Height) {
     if (userRole == 2) {
         return;
@@ -86,13 +117,13 @@ function addElementToSlide(type, X, Y, Width, Height) {
         element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Content: type === 'text' ? 'Text' : '' };
     }
     else if (type == "circle") {
-        element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Size: { Width, Height }, Color: "#0000ff" };
+        element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Size: { Width, Height }, Color: "#0000ff", Angle: 0 };
     }
     //else if (type == "arrow") {
     //    element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Size: { Width, Height }, Color: "#0000ff", EndPosition: { X: X + 5, Y: Y + 5} };
     //}
     else if (type === "rectangle") {
-        element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Size: { Width, Height }, Color: "#0000ff" };
+        element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Size: { Width, Height }, Color: "#0000ff", Angle: 0 };
     }
 
     if (slideElements.Slides.find(x => x.Id == currentSlide) != null) {
@@ -139,6 +170,7 @@ function renderSlideElements() {
             el.style.borderRadius = '50%';
             el.style.backgroundColor = `${element.Color}`;
             el.style.cursor = 'pointer';
+            el.style.transform = `rotate(${element.Angle}deg)`;
         } else if (element.type === 'rectangle') {
             el = document.createElement('div');
             el.style.left = `${element.Position.X}px`;
@@ -147,6 +179,7 @@ function renderSlideElements() {
             el.style.height = `${element.Size.Height}px`;
             el.style.backgroundColor = `${element.Color}`;
             el.style.cursor = 'pointer';
+            el.style.transform = `rotate(${element.Angle}deg)`;
         }
         else if (element.type === 'arrow') {
             el = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -260,6 +293,7 @@ function showEditor(element, domElement) {
             <label>Color: <input type="color" id="colorInput" value="${element.Color}" /></label><br/>
             <label>Width: <input type="number" id="widthInput" value="${element.Size.Width}" /></label><br/>
             <label>Height: <input type="number" id="heightInput" value="${element.Size.Height}" /></label><br/>
+            <label>Angle: <input type="number" min="0" max="360" id="angleInput" value="${element.Angle}" /></label><br/>
             <div class="d-flex mt-1">
                 <button id="saveShapeEditor" class="btn btn-primary btn-sm">Save</button>
                 <button id="deleteEditor" class="btn btn-danger btn-sm">Delete</button>
@@ -272,6 +306,7 @@ function showEditor(element, domElement) {
             <label>Color: <input type="color" id="colorInput" value="${element.Color}" /></label><br/>
             <label>Width: <input type="number" id="widthInput" value="${element.Size.Width}" /></label><br/>
             <label>Height: <input type="number" id="heightInput" value="${element.Size.Height}" /></label><br/>
+            <label>Angle: <input type="number" min="0" max="360" id="angleInput" value="${element.Angle}" /></label><br/>
             <div class="d-flex mt-1">
                 <button id="saveShapeEditor" class="btn btn-primary btn-sm">Save</button>
                 <button id="deleteEditor" class="btn btn-danger btn-sm">Delete</button>
@@ -317,10 +352,12 @@ function saveShapeEditor(element) {
     const newColor = document.getElementById('colorInput').value;
     const newWidth = parseInt(document.getElementById('widthInput').value, 10);
     const newHeight = parseInt(document.getElementById('heightInput').value, 10);
+    const newAngle = parseInt(document.getElementById('angleInput').value, 10);
 
     element.Color = newColor;
     element.Size.Width = newWidth;
     element.Size.Height = newHeight;
+    element.Angle = newAngle;
 
     editorContainer.style.display = 'none';
     renderSlideElements();
@@ -645,6 +682,68 @@ function updateSlideInfo(memoryUsage) {
     document.getElementById("slideCount").textContent = `Slides: ${slideCount}`;
     document.getElementById("memoryUsage").textContent = `Occupied memory on the server: ${memoryUsage} bytes`;
 }
+
+async function exportToPDF() {
+    const slideData = slideElements;
+    var container = document.getElementById('hiddenForPDF');
+    container.innerHTML = "";
+
+    for (const slide of slideData.Slides) {
+        for (const element of slide.Elements) {
+            var el;
+
+            if (element.type === 'text') {
+                el = document.createElement('div');
+                el.style.left = `${element.Position.X}px`;
+                el.style.top = `${element.Position.Y}px`;
+                el.innerHTML = marked.parse(element.Content);
+                el.style.color = 'black';
+                el.style.cursor = 'pointer';
+            } else if (element.type === 'circle') {
+                el = document.createElement('div');
+                el.style.left = `${element.Position.X}px`;
+                el.style.top = `${element.Position.Y}px`;
+                el.style.width = `${element.Size.Width}px`;
+                el.style.height = `${element.Size.Height}px`;
+                el.style.borderRadius = '50%';
+                el.style.backgroundColor = `${element.Color}`;
+                el.style.cursor = 'pointer';
+                el.style.transform = `rotate(${element.Angle}deg)`;
+            } else if (element.type === 'rectangle') {
+                el = document.createElement('div');
+                el.style.left = `${element.Position.X}px`;
+                el.style.top = `${element.Position.Y}px`;
+                el.style.width = `${element.Size.Width}px`;
+                el.style.height = `${element.Size.Height}px`;
+                el.style.backgroundColor = `${element.Color}`;
+                el.style.cursor = 'pointer';
+                el.style.transform = `rotate(${element.Angle}deg)`;
+            } else if (element.type === 'arrow') {
+                el = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                el.setAttribute("x1", element.Position.X);
+                el.setAttribute("y1", element.Position.Y);
+                el.setAttribute("x2", element.EndPosition.X);
+                el.setAttribute("y2", element.EndPosition.Y);
+                el.setAttribute("stroke", "black");
+                el.setAttribute("stroke-width", "2");
+                el.style.cursor = "pointer";
+            }
+
+            el.classList.add('slide-element');
+            el.dataset.index = element.Id;
+            el.style.position = 'absolute';
+
+            container.appendChild(el);
+            const divider = document.createElement('div');
+            //divider.classList.add('html2pdf_page-break');
+            container.appendChild(divider);
+        }
+
+    }
+    container = document.getElementById('currentSlide');
+    html2pdf(container);
+}
+
 
 async function startConnection() {
     try {

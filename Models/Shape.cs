@@ -6,5 +6,6 @@ namespace task6.Models
     {
         public Size Size { get; set; }
         public string Color { get; set; }
+        public double Angle { get; set; }
     }
 }
