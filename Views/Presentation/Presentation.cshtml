@@ -10,6 +10,8 @@
         <div class="col-12 bg-light py-2 mb-3">
             <button id="addText" class="btn btn-secondary"><i class="fa-solid fa-font"></i></button>
             <button id="addCircle" class="btn btn-secondary"><i class="fa-solid fa-circle"></i></button>
+            @* <button id="addArrow" class="btn btn-secondary"><i class="fa-solid fa-arrow-right"></i></button> *@
+            <button id="addRectangle" class="btn btn-secondary"><i class="fa-solid fa-square"></i></button>
         </div>
     </div>
     <div class="row">
@@ -17,7 +19,7 @@
             <input type="text" id="slidePositionInput" placeholder="Position (optional)" />
             <button class="btn btn-secondary mb-1" onclick="addSlide('@Model.Id')">+</button>
             <button class="btn btn-secondary mb-1" onclick="deleteSlide('@Model.Id')">-</button>
-            <button class=" btn btn-secondary mb-1" onclick="presentMode()">Mode</button>
+            <button class=" btn btn-secondary mb-1" onclick="presentMode()">Presentation Mode</button>
         </div>
         
         <div class="col-2 border-end overflow-auto" style="height: 80vh;">
@@ -38,12 +40,21 @@
             <div id="currentSlide" class="position-relative" style="height: 100%; border: 1px solid #ccc;">
                 
             </div>
+            <canvas id="currentSlideCanvas"class="position-absolute" style="">
+
+            </canvas>
         </div>
 
         
         <div class="col-2">
             <ul class="list-group" id="usersList">
             </ul>
+        </div>
+    </div>
+    <div class="row mt-1">
+        <div class="col-12 text-center bg-light py-2" id="slideInfo">
+            <span id="slideCount">Slides: 0</span> |
+            <span id="memoryUsage">Occupied memory on the server: 0 bytes</span>
         </div>
     </div>
 </div>

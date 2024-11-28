@@ -22,6 +22,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.getElementById('addCircle').addEventListener('click', () => startAddingElement('circle'));
 
+    //document.getElementById('addArrow').addEventListener('click', () => startAddingElement('arrow'));
+
+    document.getElementById("addRectangle").addEventListener("click", () => startAddingElement('rectangle'));
+
 
     const currentSlideContainer = document.getElementById('currentSlide');
     currentSlideContainer.addEventListener('dragover', (e) => e.preventDefault());
@@ -82,7 +86,13 @@ function addElementToSlide(type, X, Y, Width, Height) {
         element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Content: type === 'text' ? 'Text' : '' };
     }
     else if (type == "circle") {
-        element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Size: { Width, Height}, Color: "#0000ff" };
+        element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Size: { Width, Height }, Color: "#0000ff" };
+    }
+    //else if (type == "arrow") {
+    //    element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Size: { Width, Height }, Color: "#0000ff", EndPosition: { X: X + 5, Y: Y + 5} };
+    //}
+    else if (type === "rectangle") {
+        element = { type, Id: crypto.randomUUID(), Position: { X, Y }, Size: { Width, Height }, Color: "#0000ff" };
     }
 
     if (slideElements.Slides.find(x => x.Id == currentSlide) != null) {
@@ -106,31 +116,58 @@ function loadSlide(slideId) {
 
 function renderSlideElements() {
     const container = document.getElementById('currentSlide');
+    const containerCanvas = document.getElementById('currentSlideCanvas');
     container.innerHTML = '';
     if (!slideElements.Slides.find(x => x.Id == currentSlide)) return;
 
     slideElements.Slides.find(x => x.Id == currentSlide).Elements.forEach(element => {
-        const el = document.createElement('div');
-        el.classList.add('slide-element');
-        el.dataset.index = element.Id;
-        el.style.position = 'absolute';
-        el.style.left = `${element.Position.X}px`;
-        el.style.top = `${element.Position.Y}px`;
-        el.style.border = selectedElement === element.Id ? '2px dashed rgba(0, 0, 0, 0.15)' : 'none';
+        var el;
 
         if (element.type === 'text') {
+            el = document.createElement('div');
+            el.style.left = `${element.Position.X}px`;
+            el.style.top = `${element.Position.Y}px`;
             el.innerHTML = marked.parse(element.Content);
             el.style.color = 'black';
             el.style.cursor = 'pointer';
         } else if (element.type === 'circle') {
+            el = document.createElement('div');
+            el.style.left = `${element.Position.X}px`;
+            el.style.top = `${element.Position.Y}px`;
             el.style.width = `${element.Size.Width}px`;
             el.style.height = `${element.Size.Height}px`;
             el.style.borderRadius = '50%';
             el.style.backgroundColor = `${element.Color}`;
             el.style.cursor = 'pointer';
+        } else if (element.type === 'rectangle') {
+            el = document.createElement('div');
+            el.style.left = `${element.Position.X}px`;
+            el.style.top = `${element.Position.Y}px`;
+            el.style.width = `${element.Size.Width}px`;
+            el.style.height = `${element.Size.Height}px`;
+            el.style.backgroundColor = `${element.Color}`;
+            el.style.cursor = 'pointer';
+        }
+        else if (element.type === 'arrow') {
+            el = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            el.setAttribute("x1", element.Position.X);
+            el.setAttribute("y1", element.Position.Y);
+            el.setAttribute("x2", element.EndPosition.X);
+            el.setAttribute("y2", element.EndPosition.Y);
+            el.setAttribute("stroke", "black");
+            el.setAttribute("stroke-width", "2");
+            el.style.cursor = "pointer";
         }
 
+        el.classList.add('slide-element');
+        el.dataset.index = element.Id;
+        el.style.position = 'absolute';
+
         el.draggable = true;
+
+        el.style.border = selectedElement === element.Id ? '2px dashed rgba(0, 0, 0, 0.15)' : 'none';
+
+
         el.addEventListener('dragstart', (e) => dragStart(e, element.Id));
         el.addEventListener('dragend', (e) => dragEnd(e));
 
@@ -138,8 +175,12 @@ function renderSlideElements() {
             e.stopPropagation();
             selectElement(element.Id, el);
         });
-
-        container.appendChild(el);
+        if (element.type === 'arrow') {
+            containerCanvas.appendChild(el);
+        }
+        else {
+            container.appendChild(el);
+        }
     });
 }
 
@@ -187,6 +228,9 @@ function selectElement(index, element) {
     else if (currentElement.type == 'circle') {
         showEditor(currentElement, element);
     }
+    else if (currentElement.type == 'rectangle') {
+        showEditor(currentElement, element);
+    }
 
     renderSlideElements();
 }
@@ -223,13 +267,52 @@ function showEditor(element, domElement) {
         `;
         document.getElementById('saveShapeEditor').addEventListener('click', () => saveShapeEditor(element));
         document.getElementById('deleteEditor').addEventListener('click', deleteEditor);
+    } else if (element.type === 'rectangle') {
+        editorContainer.innerHTML = `
+            <label>Color: <input type="color" id="colorInput" value="${element.Color}" /></label><br/>
+            <label>Width: <input type="number" id="widthInput" value="${element.Size.Width}" /></label><br/>
+            <label>Height: <input type="number" id="heightInput" value="${element.Size.Height}" /></label><br/>
+            <div class="d-flex mt-1">
+                <button id="saveShapeEditor" class="btn btn-primary btn-sm">Save</button>
+                <button id="deleteEditor" class="btn btn-danger btn-sm">Delete</button>
+            </div>
+        `;
+        document.getElementById('saveShapeEditor').addEventListener('click', () => saveShapeEditor(element));
+        document.getElementById('deleteEditor').addEventListener('click', deleteEditor);
+    } else if (element.type === 'arrow') {
+        editorContainer.innerHTML = `
+            <label>Start X: <input type="number" id="startXInput" value="${element.Start.X}" /></label><br/>
+            <label>Start Y: <input type="number" id="startYInput" value="${element.Start.Y}" /></label><br/>
+            <label>End X: <input type="number" id="endXInput" value="${element.End.X}" /></label><br/>
+            <label>End Y: <input type="number" id="endYInput" value="${element.End.Y}" /></label><br/>
+            <div class="d-flex mt-1">
+                <button id="saveArrowEditor" class="btn btn-primary btn-sm">Save</button>
+                <button id="deleteEditor" class="btn btn-danger btn-sm">Delete</button>
+            </div>
+        `;
+        document.getElementById('saveArrowEditor').addEventListener('click', () => saveArrowEditor(element));
+        document.getElementById('deleteEditor').addEventListener('click', deleteEditor);
     }
 
     editorContainer.style.left = `${domElement.getBoundingClientRect().left}px`;
     editorContainer.style.top = `${domElement.getBoundingClientRect().top + domElement.offsetHeight}px`;
     editorContainer.style.display = 'block';
 }
+function saveArrowEditor(element) {
+    const startX = parseInt(document.getElementById('startXInput').value, 10);
+    const startY = parseInt(document.getElementById('startYInput').value, 10);
+    const endX = parseInt(document.getElementById('endXInput').value, 10);
+    const endY = parseInt(document.getElementById('endYInput').value, 10);
 
+    element.Start.X = startX;
+    element.Start.Y = startY;
+    element.End.X = endX;
+    element.End.Y = endY;
+
+    editorContainer.style.display = 'none';
+    renderSlideElements();
+    saveSlideChanges();
+}
 function saveShapeEditor(element) {
     const newColor = document.getElementById('colorInput').value;
     const newWidth = parseInt(document.getElementById('widthInput').value, 10);
@@ -330,18 +413,26 @@ async function addSlide(presentationId) {
     if (userRole != 0) {
         return;
     }
-    const positionInput = document.getElementById("slidePositionInput");
-    var position = positionInput.value ? positionInput.value : null;
+    //const positionInput = document.getElementById("slidePositionInput");
+    //var position = positionInput.value ? positionInput.value : null;
 
-    if (isNaN(position) || position == null) {
-        positionInput.value = "";
-        await connection.invoke("AddSlide", presentationId, position);
+    //if (isNaN(position) || position == null) {
+    //    positionInput.value = "";
+    //    await connection.invoke("AddSlide", presentationId, position);
+    //}
+    //else {
+    //    position = Number(position);
+    //    const listItems = document.querySelectorAll("#slidesList li.list-group-item");
+    //    const listItem = Array.from(listItems).find(item => item.textContent.trim() == position);
+    //    await connection.invoke("AddSlide", presentationId, listItem.dataset.slideId);
+    //}
+    if (currentSlide != null) {
+        if (slideElements.Slides.find(x => x.Id == currentSlide) != null) {
+            await connection.invoke("AddSlide", presentationId, currentSlide);
+        }
     }
     else {
-        position = Number(position);
-        const listItems = document.querySelectorAll("#slidesList li.list-group-item");
-        const listItem = Array.from(listItems).find(item => item.textContent.trim() == position);
-        await connection.invoke("AddSlide", presentationId, listItem.dataset.slideId);
+        await connection.invoke("AddSlide", presentationId, null);
     }
 }
 
@@ -357,18 +448,25 @@ async function deleteSlide(presentationId) {
     if (userRole != 0) {
         return;
     }
-    const positionInput = document.getElementById("slidePositionInput");
-    var position = positionInput.value ? positionInput.value : null;
+    //const positionInput = document.getElementById("slidePositionInput");
+    //var position = positionInput.value ? positionInput.value : null;
 
-    if (isNaN(position) || position == null) {
-        positionInput.value = "";
+    //if (isNaN(position) || position == null) {
+    //    positionInput.value = "";
+    //}
+    //else {
+    //    position = Number(position);
+    //    const listItems = document.querySelectorAll("#slidesList li.list-group-item");
+    //    const listItem = Array.from(listItems).find(item => item.textContent.trim() == position);
+    //    await connection.invoke("DeleteSlide", presentationId, listItem.dataset.slideId);
+    //}
+    if (currentSlide != null) {
+        if (slideElements.Slides.find(x => x.Id == currentSlide) != null) {
+            await connection.invoke("DeleteSlide", presentationId, currentSlide);
+            currentSlide = null;
+        }
     }
-    else {
-        position = Number(position);
-        const listItems = document.querySelectorAll("#slidesList li.list-group-item");
-        const listItem = Array.from(listItems).find(item => item.textContent.trim() == position);
-        await connection.invoke("DeleteSlide", presentationId, listItem.dataset.slideId);
-    }
+
 }
 connection.on("ReceiveUpdate", (data) => {
     slideElements = JSON.parse(data);
@@ -386,6 +484,11 @@ connection.on("ReceiveUpdate", (data) => {
             renderSlideElements();
         }
     }
+    connection.invoke("GetSlidesMemoryUsage", slideElements.Id);
+});
+
+connection.on("ReceiveSize", (memoryUsage) => {
+    updateSlideInfo(memoryUsage);
 });
 
 function renderAll() {
@@ -534,6 +637,13 @@ function updateRoleButtons(user, parentElement) {
         btn.classList.toggle("btn-primary");
         btn.classList.toggle("btn-outline-secondary");
     });
+}
+
+function updateSlideInfo(memoryUsage) {
+    const slideCount = slideElements.Slides.length;
+
+    document.getElementById("slideCount").textContent = `Slides: ${slideCount}`;
+    document.getElementById("memoryUsage").textContent = `Occupied memory on the server: ${memoryUsage} bytes`;
 }
 
 async function startConnection() {

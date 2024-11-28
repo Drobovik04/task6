@@ -1,9 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using task6.Models;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace task6.Hub
 {
@@ -268,6 +271,11 @@ namespace task6.Hub
                     return;
                 }
             }
+        }
+        public async Task GetSlidesMemoryUsage(string presentationId)
+        {
+            var size = System.Text.Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(_state.Presentations.Find(x => x.Id == presentationId))); // будет больше реальной
+            await _hubContext.Clients.Clients(_state.Presentations.First(x => x.Id == presentationId).Users.Select(y => y.ConnectionId)).SendAsync("ReceiveSize", size);
         }
     }
 }
