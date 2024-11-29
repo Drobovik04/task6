@@ -18,6 +18,8 @@ namespace task6.Hub
 
         public List<User> Users { get; set; } = new List<User>();
         public Dictionary<string, bool> AdminEnterAfterCreate { get; set; } = new Dictionary<string, bool>();
+
+        public Dictionary<string, Stack<Presentation>> historyForPresentations { get; set; } = new Dictionary<string, Stack<Presentation>>();
     }
 
     public class PresentationHub: Microsoft.AspNetCore.SignalR.Hub
@@ -30,62 +32,6 @@ namespace task6.Hub
             _state = state;
             _hubContext = hubContext;
         }
-        //public PresentationHub() 
-        //{
-        //    Presentations.AddRange(new List<Presentation>() 
-        //    {
-        //        new Presentation()
-        //        {
-        //            Id = Guid.NewGuid().ToString(), Name = "adssa",
-        //            Users = new List<User>
-        //            {
-        //                new User() { Nickname = "asdsa"}
-        //            },
-        //            Slides = new List<Slide>()
-        //            {
-        //                new Slide()
-        //                {
-        //                    Id = Guid.NewGuid().ToString(), Elements = new List<Element>()
-        //                    {
-        //                        new Text() {Content = "adasdsa", Position = new Position() {X = 5, Y = 10 } }
-        //                    }
-        //                },
-        //                new Slide()
-        //                {
-        //                    Id = Guid.NewGuid().ToString(), Elements = new List<Element>()
-        //                    {
-        //                        new Text() {Content = "adasdsa", Position = new Position() {X = 5, Y = 10 } }
-        //                    }
-        //                },
-        //                new Slide()
-        //                {
-        //                    Id = Guid.NewGuid().ToString(), Elements = new List<Element>()
-        //                    {
-        //                        new Text() {Content = "adasdsa", Position = new Position() {X = 5, Y = 10 } }
-        //                    }
-        //                },
-        //            }
-        //        },
-        //        new Presentation()
-        //        {
-        //            Id = Guid.NewGuid().ToString(), Name = "adsasdsa",
-        //            Users = new List<User>
-        //            {
-        //                new User() { Nickname = "asdsa"}
-        //            },
-        //            Slides = new List<Slide>()
-        //            {
-        //                new Slide()
-        //                {
-        //                    Id = Guid.NewGuid().ToString(), Elements = new List<Element>()
-        //                    {
-        //                        new Text() {Content = "adasdsa", Position = new Position() {X = 5, Y = 10 } }
-        //                    }
-        //                }
-        //            }
-        //        },
-        //    });
-        //}
         public async Task JoinPresentation(string presentationId, string userName)
         {
             var findPres = _state.Presentations.First(x => x.Id == presentationId);
@@ -165,7 +111,7 @@ namespace task6.Hub
 
                 if (position != null)
                 {
-                    presentation.Slides.Insert(presentation.Slides.FindIndex(x => x.Id == position), newSlide);
+                    presentation.Slides.Insert(presentation.Slides.FindIndex(x => x.Id == position) + 1, newSlide);
                 }
                 else
                 {
@@ -214,12 +160,42 @@ namespace task6.Hub
         {
             Presentation pres = JsonSerializer.Deserialize<Presentation>(data);
             var presToChange = _state.Presentations.First(x => x.Id == pres.Id);
+
+            if (!_state.historyForPresentations.ContainsKey(pres.Id))
+            {
+                _state.historyForPresentations[pres.Id] = new Stack<Presentation>();
+            }
+
+            if (_state.historyForPresentations[pres.Id].Count > 20)
+            {
+                var tempStack = new Stack<Presentation>(_state.historyForPresentations[pres.Id].Reverse().Skip(1));
+                _state.historyForPresentations[pres.Id] = tempStack;
+            }
+
+            _state.historyForPresentations[pres.Id].Push(JsonSerializer.Deserialize<Presentation>(JsonSerializer.Serialize(presToChange)));
+
             presToChange.Users = pres.Users;
             presToChange.Slides = pres.Slides;
             presToChange.Name = pres.Name;
 
             //await _hubContext.Clients.All.SendAsync("ReceiveUpdate", data);
             await _hubContext.Clients.Clients(_state.Presentations.First(x => x.Id == pres.Id).Users.Select(y => y.ConnectionId)).SendAsync("ReceiveUpdate", data);
+        }
+
+        public async Task UndoPresentation(string presentationId)
+        {
+            if (_state.historyForPresentations.ContainsKey(presentationId) && _state.historyForPresentations[presentationId].Count > 0)
+            {
+                var previousState = _state.historyForPresentations[presentationId].Pop();
+
+                var presToChange = _state.Presentations.First(x => x.Id == presentationId);
+                presToChange.Users = previousState.Users;
+                presToChange.Slides = previousState.Slides;
+                presToChange.Name = previousState.Name;
+
+                // Оповещаем всех клиентов
+                await _hubContext.Clients.Clients(presToChange.Users.Select(y => y.ConnectionId)).SendAsync("ReceiveUpdate", JsonSerializer.Serialize(presToChange));
+            }
         }
 
         public async Task CheckGroupMembership(string groupId)

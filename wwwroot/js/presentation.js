@@ -31,7 +31,9 @@ document.addEventListener("DOMContentLoaded", function () {
     //});
     //document.getElementById("imageInput").addEventListener("change", handleImageUpload);
 
-    document.getElementById("exportToPDF").addEventListener("click", () => exportToPDF());
+    //document.getElementById("exportToPDF").addEventListener("click", () => exportToPDF());
+
+    document.getElementById("undoAction").addEventListener("click", () => undoAction());
 
     const currentSlideContainer = document.getElementById('currentSlide');
     currentSlideContainer.addEventListener('dragover', (e) => e.preventDefault());
@@ -83,29 +85,9 @@ function getClickPosition(e, container) {
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
 }
 
-function handleImageUpload(event) {
-    const file = event.target.files[0];
-
-    if (file) {
-        const reader = new FileReader();
-
-        reader.onload = function (e) {
-            const imageSrc = e.target.result;
-
-            // Задаем параметры изображения
-            const image = {
-                id: Date.now(), // Уникальный идентификатор
-                top: "100px",
-                left: "100px",
-                width: "200px",
-                height: "150px",
-                src: imageSrc
-            };
-
-        };
-
-        reader.readAsDataURL(file); // Преобразуем файл в base64
-    }
+function undoAction() {
+    const presentationId = slideElements.Id;
+    connection.invoke("UndoPresentation", presentationId);
 }
 
 function addElementToSlide(type, X, Y, Width, Height) {
@@ -387,7 +369,7 @@ function deleteEditor() {
         return;
     }
     if (selectedElement !== null) {
-        slideElements.Slides.find(x => x.Id == currentSlide).Elements.filter(elem => elem.Id != selectedElement);
+        slideElements.Slides.find(x => x.Id == currentSlide).Elements = slideElements.Slides.find(x => x.Id == currentSlide).Elements.filter(elem => elem.Id != selectedElement);
         selectedElement = null;
         editorContainer.style.display = 'none';
         renderSlideElements();
@@ -684,10 +666,29 @@ function updateSlideInfo(memoryUsage) {
 }
 
 async function exportToPDF() {
+    //don't work, something witn image generataion (corrupt or incomplete)
+    const { jsPDF } = window.jspdf;
     const slideData = slideElements;
     var container = document.getElementById('hiddenForPDF');
-    container.innerHTML = "";
+    const containerToGetSize = document.getElementById('currentSlide');
 
+    const slideWidthPx = containerToGetSize.offsetWidth;
+    const slideHeightPx = containerToGetSize.offsetHeight;
+
+    const dpi = 96;
+    const pxToMm = 25.4 / dpi;
+    const slideWidthMm = slideWidthPx * pxToMm;
+    const slideHeightMm = slideHeightPx * pxToMm;
+
+    const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: [slideWidthMm, slideHeightMm],
+    });
+
+    container.innerHTML = "";
+    container.style.display = "block";
+    var isFirst = true;
     for (const slide of slideData.Slides) {
         for (const element of slide.Elements) {
             var el;
@@ -734,14 +735,25 @@ async function exportToPDF() {
             el.style.position = 'absolute';
 
             container.appendChild(el);
-            const divider = document.createElement('div');
-            //divider.classList.add('html2pdf_page-break');
-            container.appendChild(divider);
         }
+        const canvas = await html2canvas(container, {
+            useCORS: true,
+            scale: 1,
+        });
+        const imgData = canvas.toDataURL('image/png');
 
+        if (!isFirst) {
+            pdf.addPage();
+            isFirst = true;
+        }
+        const imgWidth = pdf.internal.pageSize.getWidth();
+        const imgHeight = pdf.internal.pageSize.getHeight();
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+
+        container.innerHTML = "";
     }
-    container = document.getElementById('currentSlide');
-    html2pdf(container);
+    pdf.save('presentation.pdf');
+    container.style.display = "none";
 }
 
 

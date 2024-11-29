@@ -14,12 +14,13 @@
             <button id="addRectangle" class="btn btn-secondary"><i class="fa-solid fa-square"></i></button>
 @*             <button id="addImage" class="btn btn-secondary"><i class="fa-solid fa-image"></i></button>
             <input type="file" id="imageInput" style="display: none;" accept="image/*"> *@
-            <button id="exportToPDF" class="btn btn-secondary"><i class="fa-solid fa-file-pdf"></i></button>
+            @* <button id="exportToPDF" class="btn btn-secondary"><i class="fa-solid fa-file-pdf"></i></button> *@
+            <button id="undoAction" class="btn btn-secondary"><i class="fa-solid fa-arrow-rotate-left"></i></button>
         </div>
     </div>
     <div class="row">
         <div>
-            <input type="text" id="slidePositionInput" placeholder="Position (optional)" />
+@*             <input type="text" id="slidePositionInput" placeholder="Position (optional)" /> *@
             <button class="btn btn-secondary mb-1" onclick="addSlide('@Model.Id')">+</button>
             <button class="btn btn-secondary mb-1" onclick="deleteSlide('@Model.Id')">-</button>
             <button class=" btn btn-secondary mb-1" onclick="presentMode()">Presentation Mode</button>
@@ -43,8 +44,8 @@
             <div id="currentSlide" class="position-relative" style="height: 100%; border: 1px solid #ccc;">
                 
             </div>
-            <div id="hiddenForPDF" class="position-relative" style="z-index: -9999"></div>
-            <canvas id="currentSlideCanvas"class="position-absolute" style="">
+            <div id="hiddenForPDF" class="position-relative" style="z-index: -9999; visibility: visible;"></div>
+            <canvas id="currentSlideCanvas"class="position-relative" style="display: none;">
 
             </canvas>
         </div>
